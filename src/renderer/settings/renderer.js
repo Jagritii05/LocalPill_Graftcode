@@ -20,10 +20,19 @@ tabBtns.forEach((btn) => {
 const engineRadios = document.querySelectorAll('input[name="engine"]');
 const groqGroup = document.getElementById('groqGroup');
 const groqApiKeyInput = document.getElementById('groqApiKey');
+const gnaniGroup = document.getElementById('gnaniGroup');
+const gnaniApiKeyInput = document.getElementById('gnaniApiKey');
+const speechLanguageSelect = document.getElementById('speechLanguage');
+const scriptModeSelect = document.getElementById('scriptMode');
+
+function updateEngineKeyVisibility(engineValue) {
+  if (groqGroup) groqGroup.style.display = engineValue === 'groq-whisper' ? 'block' : 'none';
+  if (gnaniGroup) gnaniGroup.style.display = engineValue === 'gnani-prisma' ? 'block' : 'none';
+}
 
 engineRadios.forEach((radio) => {
   radio.addEventListener('change', () => {
-    groqGroup.style.display = radio.value === 'groq-whisper' ? 'block' : 'none';
+    updateEngineKeyVisibility(radio.value);
   });
 });
 
@@ -84,14 +93,17 @@ async function loadSettings() {
   const s = await api.getSettings();
   if (!s) return;
 
-  // Engine
+  // Engine & Language
   const selectedEngineRadio = document.querySelector(`input[name="engine"][value="${s.engine}"]`);
   if (selectedEngineRadio) {
     selectedEngineRadio.checked = true;
-    groqGroup.style.display = s.engine === 'groq-whisper' ? 'block' : 'none';
   }
+  updateEngineKeyVisibility(s.engine || 'whisper-base');
 
-  groqApiKeyInput.value = s.groqApiKey || '';
+  if (groqApiKeyInput) groqApiKeyInput.value = s.groqApiKey || '';
+  if (gnaniApiKeyInput) gnaniApiKeyInput.value = s.gnaniApiKey || '';
+  if (speechLanguageSelect) speechLanguageSelect.value = s.speechLanguage || 'en';
+  if (scriptModeSelect) scriptModeSelect.value = s.scriptMode || 'romanized';
 
   // Assistant & Memory
   const assistantCheck = document.getElementById('assistantEnabled');
@@ -263,7 +275,10 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
 
   const newSettings = {
     engine: selectedEngine,
-    groqApiKey: groqApiKeyInput.value.trim(),
+    speechLanguage: speechLanguageSelect?.value || 'en',
+    scriptMode: scriptModeSelect?.value || 'romanized',
+    groqApiKey: groqApiKeyInput?.value.trim() || '',
+    gnaniApiKey: gnaniApiKeyInput?.value.trim() || '',
     assistantEnabled: document.getElementById('assistantEnabled')?.checked !== false,
     memoryEnabled: document.getElementById('memoryEnabled')?.checked !== false,
     memoryMode: document.getElementById('memoryMode')?.value || 'hybrid',

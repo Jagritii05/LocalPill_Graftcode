@@ -35,14 +35,20 @@ export class GraftSpeechClient {
     }
   }
 
-  async transcribe(audioBuffer) {
+  async transcribe(audioBuffer, options = {}) {
     await this._ensureInit();
     const base64Audio = Buffer.isBuffer(audioBuffer)
       ? audioBuffer.toString('base64')
       : Buffer.from(audioBuffer).toString('base64');
 
+    const language = typeof options === 'string' ? '' : (options.language || '');
+    const prompt = typeof options === 'string' ? options : (options.prompt || '');
+    const wirePrompt = language
+      ? JSON.stringify({ __localpill_opts: true, language, prompt })
+      : prompt;
+
     logger.info(`Sending ${base64Audio.length} chars of base64 audio over Graftcode RPC...`);
-    const rawJson = await this._speechService.transcribeBytesJson(base64Audio, '');
+    const rawJson = await this._speechService.transcribeBytesJson(base64Audio, wirePrompt);
     const result = typeof rawJson === 'string' ? JSON.parse(rawJson) : rawJson;
 
     if (result.error && !result.text) {

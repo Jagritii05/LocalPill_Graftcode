@@ -154,11 +154,22 @@ class SpeechService:
         if not os.path.exists(file_path):
             raise FileNotFoundError(f"File not found: {file_path}")
 
+        effective_prompt = prompt or ""
+        language = None
+        if isinstance(effective_prompt, str) and effective_prompt.startswith('{"__localpill_opts":'):
+            try:
+                opts = json.loads(effective_prompt)
+                if isinstance(opts, dict) and opts.get("__localpill_opts"):
+                    language = opts.get("language") or None
+                    effective_prompt = opts.get("prompt") or ""
+            except Exception:
+                pass
+
         wav_path = None
         try:
             wav_path, duration = convert_to_wav(file_path)
             engine = self._registry.get_engine()
-            result = engine.transcribe(wav_path, prompt=prompt)
+            result = engine.transcribe(wav_path, prompt=effective_prompt, language=language)
             result["duration"] = result.get("duration") or duration
             return result
         finally:

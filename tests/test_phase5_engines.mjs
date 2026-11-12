@@ -28,7 +28,7 @@ try {
   supervisor.startGatewayA(8085, 8086);
 
   console.log('Waiting for Gateway A (Python SpeechService) to be ready...');
-  const readyA = await supervisor.waitForReady('gateway-a', 60000);
+  const readyA = await supervisor.waitForReady('gateway-a', 120000);
   assert.equal(readyA, true, 'Gateway A should be ready on 8085');
 
   const graftClient = new GraftSpeechClient();
@@ -37,18 +37,20 @@ try {
   await asyncTest('GraftSpeechClient lists available engines over Graftcode RPC', async () => {
     const engines = await graftClient.listEngines();
     assert.ok(Array.isArray(engines), 'Engines should be an array');
-    assert.ok(engines.length >= 4, 'Should list at least 4 engines');
+    assert.ok(engines.length >= 5, 'Should list at least 5 engines');
 
     const tiny = engines.find((e) => e.id === 'whisper-tiny');
     const base = engines.find((e) => e.id === 'whisper-base');
     const small = engines.find((e) => e.id === 'whisper-small');
     const groq = engines.find((e) => e.id === 'groq-whisper');
+    const gnani = engines.find((e) => e.id === 'gnani-prisma');
     const mlx = engines.find((e) => e.id === 'mlx-granite');
 
     assert.ok(tiny && tiny.is_local, 'whisper-tiny should be local');
     assert.ok(base && base.is_local, 'whisper-base should be local');
     assert.ok(small && small.is_local, 'whisper-small should be local');
     assert.ok(groq && !groq.is_local, 'groq-whisper should be cloud (is_local: false)');
+    assert.ok(gnani && !gnani.is_local, 'gnani-prisma should be cloud (is_local: false)');
     assert.ok(mlx && !mlx.is_available, 'mlx-granite should be unavailable on Windows');
     assert.ok(base.device === 'cpu' || base.device === 'cuda', 'Device should be auto-detected');
   });

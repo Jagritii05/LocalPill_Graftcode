@@ -25,7 +25,7 @@ class SpeechEngine(ABC):
         pass
 
     @abstractmethod
-    def transcribe(self, wav_path: str, prompt: str = "") -> Dict[str, Any]:
+    def transcribe(self, wav_path: str, prompt: str = "", language: Optional[str] = None) -> Dict[str, Any]:
         """
         Transcribe a 16 kHz mono WAV file.
         Returns a dict:

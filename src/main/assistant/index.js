@@ -4,6 +4,8 @@ import { memoryStore, MEMORY_DIR } from './memory-store.js';
 import { generate, embed } from './gemini.js';
 import { captureActiveScreen } from './screen-capture.js';
 import { ensureRecentScreenshotsIndexed } from './screenshot-watcher.js';
+import { settingsStore } from '../settings-store.js';
+import { getLanguageConfig, isIndicLanguage } from './languages.js';
 
 export { detectIntent } from './intent.js';
 export { startScreenshotWatcher, stopScreenshotWatcher, getMemoryStatus, ensureRecentScreenshotsIndexed } from './screenshot-watcher.js';
@@ -85,10 +87,14 @@ export async function summarizeRecent(focus = '', limit = 10) {
     .map((e, i) => `${i + 1}. [${new Date(e.createdAt).toLocaleString()}] ${e.description}`)
     .join('\n');
 
+  const speechLang = settingsStore.get('speechLanguage') || 'en';
+  const langConf = getLanguageConfig(speechLang);
+  const langLine = isIndicLanguage(speechLang) ? ` ${langConf.styleGuide}` : '';
+
   const prompt =
     `These are descriptions of my ${recent.length} most recent screenshots, newest first:\n\n${list}\n\n` +
     (focus ? `Focus on: ${focus}\n\n` : '') +
-    'Summarize what I was working on in a few short sentences. Plain text, no markdown.';
+    `Summarize what I was working on in a few short sentences. Plain text, no markdown.${langLine}`;
 
   return generate(prompt);
 }
@@ -96,6 +102,12 @@ export async function summarizeRecent(focus = '', limit = 10) {
 // "hey pill / reply / answer ..." - look at the screen and write a reply to paste
 export async function askAboutScreen(instruction) {
   const shot = await captureActiveScreen();
+  const speechLang = settingsStore.get('speechLanguage') || 'en';
+  const langConf = getLanguageConfig(speechLang);
+  const langHint = isIndicLanguage(speechLang)
+    ? ` If the instruction is an explanation request or asked in ${langConf.name}, ${langConf.styleGuide} For formal email or chat replies, default to clean polite English unless the user explicitly asks to reply in ${langConf.name}.`
+    : '';
+
   const prompt = instruction
     ? `Instruction: ${instruction}`
     : 'Write a suitable reply to what is shown on screen.';
@@ -104,7 +116,8 @@ export async function askAboutScreen(instruction) {
     system:
       'You are a writing assistant. The user is looking at the attached screenshot of their screen. ' +
       'Follow their instruction using what is on screen as context. ' +
-      'Return only the text to paste at their cursor: no preamble, no quotes, no markdown.',
+      'Return only the text to paste at their cursor: no preamble, no quotes, no markdown.' +
+      langHint,
   });
 }
 
@@ -171,6 +184,12 @@ export async function askAboutRememberedScreen(question) {
       history.map((h) => `${h.role === 'user' ? 'User' : 'Assistant'}: ${h.text}`).join('\n') + '\n\n';
   }
 
+  const speechLang = settingsStore.get('speechLanguage') || 'en';
+  const langConf = getLanguageConfig(speechLang);
+  const langRule = isIndicLanguage(speechLang)
+    ? `\n- ${langConf.styleGuide}`
+    : '';
+
   const prompt =
     historySection +
     `The user is working in an active application (e.g. email, chat, or editor) and asks a specific question about this previously remembered screen:\n` +
@@ -178,7 +197,7 @@ export async function askAboutRememberedScreen(question) {
     `Instructions:\n` +
     `- Answer the question directly, accurately, and concisely based strictly on what is visible on this screen.\n` +
     `- Return only the clean text to paste at their cursor (e.g. steps, code, numbers, explanation).\n` +
-    `- Do NOT include conversational filler (e.g. "Sure! Here is...", "Based on the image..."), markdown code blocks, or quote marks unless specifically asked.`;
+    `- Do NOT include conversational filler (e.g. "Sure! Here is...", "Based on the image..."), markdown code blocks, or quote marks unless specifically asked.${langRule}`;
 
   const answer = await generate(prompt, [imagePart], {
     system:

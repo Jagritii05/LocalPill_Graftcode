@@ -7,11 +7,11 @@ from typing import Dict, Any, Optional
 try:
     from .base import SpeechEngine
     from ..errors import ModelNotReadyException, TranscriptionFailedException
-    from ..config import MODELS_DIR
+    from ..config import MODELS_DIR, get_speech_language
 except ImportError:
     from speech_service.engines.base import SpeechEngine
     from speech_service.errors import ModelNotReadyException, TranscriptionFailedException
-    from speech_service.config import MODELS_DIR
+    from speech_service.config import MODELS_DIR, get_speech_language
 
 _av_patched = False
 
@@ -140,7 +140,9 @@ class FasterWhisperEngine(SpeechEngine):
             self._model = None
             gc.collect()
 
-    def transcribe(self, wav_path: str, prompt: str = "") -> Dict[str, Any]:
+    def transcribe(
+        self, wav_path: str, prompt: str = "", language: Optional[str] = None
+    ) -> Dict[str, Any]:
         if self._model is None:
             self.load()
 
@@ -160,16 +162,20 @@ class FasterWhisperEngine(SpeechEngine):
 
             audio_input = audio_data if audio_data is not None else wav_path
 
+            raw_lang = (language or get_speech_language() or "en").strip().lower()
+            whisper_lang = None if raw_lang == "auto" else raw_lang.split("-")[0]
+
             default_prompt = (
                 "Dictation for LocalPill. "
                 "Terminology: Aadhaar, PAN card, B.Tech, email, password, commas, periods. "
                 "Formatting: numbers as digits (e.g. 1, 2, 3, 4)."
-            )
+            ) if whisper_lang == "en" else None
             effective_prompt = prompt if prompt else default_prompt
 
             segments, info = self._model.transcribe(
                 audio_input,
-                language="en",
+                language=whisper_lang,
+                task="transcribe",
                 initial_prompt=effective_prompt,
                 word_timestamps=True,
                 beam_size=5

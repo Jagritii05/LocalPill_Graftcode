@@ -5,6 +5,8 @@ import {
   replaceSpokenPunctuation,
   applySentenceCasing,
   expandSnippets,
+  devanagariToRoman,
+  hasIndicScript,
 } from '../services/text/index.js';
 
 console.log('[Test] Running Text Pipeline Unit Tests...');
@@ -89,5 +91,18 @@ assert.strictEqual(pipeline.process(undefined), '', 'Undefined must return empty
 const longText = 'word '.repeat(100) + 'period';
 const processedLong = pipeline.process(longText);
 assert.ok(processedLong.endsWith('.'), 'Long text processed properly');
+
+// multilingual spoken punctuation
+assert.strictEqual(
+  replaceSpokenPunctuation('Mera naam Rahul hai purna viram Aap kaise ho prashna chinh'),
+  'Mera naam Rahul hai. Aap kaise ho?',
+  'Indic spoken punctuation should convert cleanly'
+);
+
+// deterministic Devanagari to Romanized Hinglish fallback
+assert.strictEqual(hasIndicScript('मेरा नाम जागृति है।'), true);
+assert.strictEqual(hasIndicScript('Mera naam Jagriti hai.'), false);
+const romanizedFallback = applySentenceCasing(devanagariToRoman('मेरा नाम जागृति है।'));
+assert.strictEqual(romanizedFallback, 'Mera naam jaagriti hai.');
 
 console.log('[Test] ALL TEXT PIPELINE UNIT TESTS PASSED!');

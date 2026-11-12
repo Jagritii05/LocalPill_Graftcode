@@ -82,6 +82,17 @@
               <div class="radio-desc">Sub-second cloud transcription. Requires Groq API Key. Audio sent to Groq.</div>
             </div>
           </label>
+
+          <label class="radio-card">
+            <input type="radio" name="engine" value="gnani-prisma" />
+            <div class="radio-body">
+              <div class="radio-title">
+                Gnani Prisma STT (Cloud: Multilingual Indic)
+                <span class="badge-warning">Audio leaves device</span>
+              </div>
+              <div class="radio-desc">Multilingual Indian speech recognition (Hindi/Hinglish, Tamil, Bengali, Telugu, Kannada, Marathi, Gujarati). Requires Gnani AI API Key.</div>
+            </div>
+          </label>
         </div>
 
         <div class="form-group" id="groqGroup" style="display: none; margin-top: 16px;">
@@ -90,6 +101,42 @@
           <small class="helper-text">Your key is stored locally in %APPDATA%\LocalPill\settings.json</small>
           <div class="cloud-disclosure">
             <strong>Privacy Notice:</strong> Audio transcribed with Groq leaves this machine and is processed on Groq's cloud servers. Do not use for confidential speech.
+          </div>
+        </div>
+
+        <div class="form-group" id="gnaniGroup" style="display: none; margin-top: 16px;">
+          <label for="gnaniApiKey">Gnani AI API Key</label>
+          <input type="password" id="gnaniApiKey" placeholder="X-API-Key-ID..." class="text-input" />
+          <small class="helper-text">Your key is stored locally in %APPDATA%\LocalPill\settings.json</small>
+          <div class="cloud-disclosure">
+            <strong>Privacy Notice:</strong> Audio transcribed with Gnani Prisma leaves this machine and is processed on Gnani Vachana cloud servers (api.vachana.ai). Do not use for confidential speech.
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px;">
+          <div class="form-group">
+            <label for="speechLanguage">Speech Language</label>
+            <select id="speechLanguage" class="text-input" style="width: 100%;">
+              <option value="en">English (Default)</option>
+              <option value="hi-IN">Hindi / Hinglish (hi-IN)</option>
+              <option value="ta-IN">Tamil / Tanglish (ta-IN)</option>
+              <option value="bn-IN">Bengali / Benglish (bn-IN)</option>
+              <option value="te-IN">Telugu (te-IN)</option>
+              <option value="kn-IN">Kannada (kn-IN)</option>
+              <option value="mr-IN">Marathi (mr-IN)</option>
+              <option value="gu-IN">Gujarati (gu-IN)</option>
+              <option value="auto">Auto-detect</option>
+            </select>
+            <small class="helper-text">Applied to Gnani Prisma, Local Whisper, and Groq.</small>
+          </div>
+
+          <div class="form-group">
+            <label for="scriptMode">Dictation Output Script</label>
+            <select id="scriptMode" class="text-input" style="width: 100%;">
+              <option value="romanized">Romanized / English Letters (e.g. Mera naam Jagriti hai)</option>
+              <option value="native">Native Script (Devanagari / Tamil / Bengali)</option>
+            </select>
+            <small class="helper-text">Writes non-English speech phonetically in English letters without translating meaning.</small>
           </div>
         </div>
       </div>

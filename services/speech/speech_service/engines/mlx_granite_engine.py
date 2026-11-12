@@ -1,5 +1,5 @@
 import sys
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 try:
     from .base import SpeechEngine
     from ..errors import EngineUnavailableException
@@ -37,7 +37,7 @@ class MlxGraniteEngine(SpeechEngine):
     def unload(self) -> None:
         self._model = None
 
-    def transcribe(self, wav_path: str, prompt: str = "") -> Dict[str, Any]:
+    def transcribe(self, wav_path: str, prompt: str = "", language: Optional[str] = None) -> Dict[str, Any]:
         if not self.is_available():
             raise EngineUnavailableException("MLX Granite engine is only available on macOS with Apple Silicon.")
         raise NotImplementedError("MLX execution is not supported on this platform.")

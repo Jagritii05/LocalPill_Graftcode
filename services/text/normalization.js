@@ -5,10 +5,10 @@
 // Spoken punctuation and symbols mappings
 const SPOKEN_PUNCTUATION_PATTERNS = [
   { regex: /\b(exclamation mark|exclamation point)\b/gi, replacement: '!' },
-  { regex: /\b(question mark)\b/gi, replacement: '?' },
-  { regex: /\b(new line|newline)\b/gi, replacement: '\n' },
-  { regex: /\b(full stop|period)\b/gi, replacement: '.' },
-  { regex: /\b(comma)\b/gi, replacement: ',' },
+  { regex: /\b(question mark|prashna chinh)\b/gi, replacement: '?' },
+  { regex: /\b(new line|newline|line change)\b/gi, replacement: '\n' },
+  { regex: /\b(full stop|period|purna viram)\b/gi, replacement: '.' },
+  { regex: /\b(comma|alpaviram)\b/gi, replacement: ',' },
   { regex: /\b(colon)\b/gi, replacement: ':' },
   { regex: /\b(semicolon)\b/gi, replacement: ';' },
   { regex: /\b(open quote)\b/gi, replacement: '"' },

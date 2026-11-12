@@ -20,6 +20,7 @@ import {
   getMemoryStatus,
   startScreenshotWatcher,
 } from './assistant/index.js';
+import { transliterateToRoman } from './assistant/gemini.js';
 
 export function registerIpcHandlers({ getPillWindow, openSettingsWindow }) {
   // Check backend health
@@ -48,10 +49,11 @@ export function registerIpcHandlers({ getPillWindow, openSettingsWindow }) {
       logger.info(`Received audio data for transcription (${buffer.length} bytes).`);
 
       const speechClient = getSpeechClient();
+      const speechLanguage = settingsStore.get('speechLanguage') || 'en';
       let rawResult = null;
 
       try {
-        rawResult = await speechClient.transcribe(buffer);
+        rawResult = await speechClient.transcribe(buffer, { language: speechLanguage });
       } catch (err) {
         const trans = translateError(err);
         logger.warn(`Speech transcription failed (Attempt 1): [${trans.kind}] ${trans.message}`);
@@ -61,7 +63,7 @@ export function registerIpcHandlers({ getPillWindow, openSettingsWindow }) {
           logger.info('[Supervisor] Gateway died or restarting. Waiting 1.5s for auto-restart retry...');
           await new Promise((r) => setTimeout(r, 1500));
           try {
-            rawResult = await speechClient.transcribe(buffer);
+            rawResult = await speechClient.transcribe(buffer, { language: speechLanguage });
             logger.info('[Supervisor] Auto-retry succeeded after gateway restart!');
           } catch (retryErr) {
             const retryTrans = translateError(retryErr);
@@ -76,7 +78,7 @@ export function registerIpcHandlers({ getPillWindow, openSettingsWindow }) {
           logger.info(`[Supervisor] Engine unavailable. Attempting auto-fallback to ${fallback}...`);
           try {
             await speechClient.setEngine(fallback);
-            rawResult = await speechClient.transcribe(buffer);
+            rawResult = await speechClient.transcribe(buffer, { language: speechLanguage });
           } catch (fbErr) {
             return {
               success: false,
@@ -116,6 +118,10 @@ export function registerIpcHandlers({ getPillWindow, openSettingsWindow }) {
         const trans = translateError(pipeErr);
         logger.warn(`Text pipeline failed: [${trans.kind}] ${trans.message}`);
         cleanText = rawResult.text;
+      }
+
+      if (cleanText && settingsStore.get('scriptMode') !== 'native') {
+        cleanText = await transliterateToRoman(cleanText);
       }
 
       logger.logTranscript(cleanText);
@@ -367,6 +373,12 @@ export function registerIpcHandlers({ getPillWindow, openSettingsWindow }) {
 
     if (newSettings.groqApiKey !== undefined) {
       process.env.GROQ_API_KEY = newSettings.groqApiKey;
+    }
+    if (newSettings.gnaniApiKey !== undefined) {
+      process.env.GNANI_API_KEY = newSettings.gnaniApiKey;
+    }
+    if (newSettings.speechLanguage !== undefined) {
+      process.env.SPEECH_LANGUAGE = newSettings.speechLanguage;
     }
     if (newSettings.geminiApiKey !== undefined) {
       process.env.GEMINI_API_KEY = newSettings.geminiApiKey;

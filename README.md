@@ -38,9 +38,10 @@ LocalPill is designed with a strict architectural separation between local and c
 | **Text Normalization & Snippets** | Local Node.js / Graftcode Gateway B | **100% Offline** | Zero network egress. Punctuation conversion, filler word removal, and snippet expansion run entirely on host. |
 | **Model Context Protocol (MCP)** | Local Graftcode Gateway A (`:8085/mcp`) & Gateway B (`:8095/mcp`) | **100% Localhost** | Access limited strictly to `%USERPROFILE%\LocalPillRecordings`. No cloud telemetry. |
 | **Groq Whisper Fallback** | Optional Cloud Engine (`whisper-large-v3-turbo`) | Internet Connection | **Opt-in only:** Requires user-configured `GROQ_API_KEY`. Audio sent to Groq API only when explicitly selected in Settings. |
+| **Gnani Prisma Multilingual STT** | Optional Cloud Engine (`prisma-v3.0`, Indian languages) | Internet Connection | **Opt-in only:** Requires user-configured `GNANI_API_KEY`. Supports Hinglish, Hindi, Tamil, Bengali, Telugu, Kannada, Marathi, Gujarati. |
 | **Gemini Visual Memory & Screen Assistant** | Cloud Multimodal Reasoning (Google Gemini 3 Flash) | Internet Connection | **Opt-in only:** Requires user-configured `GEMINI_API_KEY`. Triggered strictly by intentional voice commands (*"remember this"*, *"ask what this error means"*). |
 
-If `GEMINI_API_KEY` or `GROQ_API_KEY` are not provided in `.env`, all cloud capabilities remain inactive while 100% of local voice dictation, engine switching, and MCP tools function seamlessly offline.
+If `GEMINI_API_KEY`, `GROQ_API_KEY`, or `GNANI_API_KEY` are not provided in `.env`, all cloud capabilities remain inactive while 100% of local voice dictation, engine switching, and MCP tools function seamlessly offline.
 
 ### Selectable Visual Memory Modes
 Under **Settings > Assistant**, users can switch between two distinct memory architectures based on their privacy preferences:
@@ -83,7 +84,7 @@ flowchart TD
 
     subgraph Engines ["Execution Services"]
         Q["In-Process Python Faster-Whisper (CTranslate2 int8/float16)"]
-        R["Groq Cloud Whisper API (Optional Cloud Fallback)"]
+        R["Opt-In Cloud Engines (Groq Whisper / Gnani Prisma Multilingual)"]
         S["Deterministic Text Normalizer & Snippet Expander"]
     end
 

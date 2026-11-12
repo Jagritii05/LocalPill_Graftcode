@@ -66,8 +66,11 @@ function getDefaultScreenshotFolder() {
 const DEFAULT_SETTINGS = {
   hotkey: 'CommandOrControl+Shift+Space',
   engine: 'whisper-base',
+  speechLanguage: process.env.SPEECH_LANGUAGE || 'en',
+  scriptMode: 'romanized',
   transport: 'graft',
   groqApiKey: process.env.GROQ_API_KEY || '',
+  gnaniApiKey: process.env.GNANI_API_KEY || '',
   geminiApiKey: process.env.GEMINI_API_KEY || '',
   geminiModel: 'gemini-3-flash-preview',
   assistantEnabled: true,

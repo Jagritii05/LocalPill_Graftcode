@@ -81,6 +81,23 @@ assert.strictEqual(dictateTest1.mode, 'dictate');
 const dictateTest2 = detectIntent('Meeting notes: discuss roadmap and budget.');
 assert.strictEqual(dictateTest2.mode, 'dictate');
 
+// multilingual intent checks
+const indicDictate = detectIntent('Mera naam Rahul hai');
+assert.strictEqual(indicDictate.mode, 'dictate');
+
+const indicAsk = detectIntent('Is screen ko explain karo');
+assert.strictEqual(indicAsk.mode, 'ask');
+
+const indicReply = detectIntent('Is mail ka reply likh do ki main kal aunga');
+assert.strictEqual(indicReply.mode, 'ask');
+assert.ok(indicReply.query.includes('main kal aunga'));
+
+const indicRemember = detectIntent('Is screen ko yaad rakhna');
+assert.strictEqual(indicRemember.mode, 'remember');
+
+const indicMemQ = detectIntent('Jo screen yaad rakhne ko bola tha usme kya error hai?');
+assert.strictEqual(indicMemQ.mode, 'query_memory');
+
 console.log('[PASS] Intent detection tests passed');
 
 // 2. cosine similarity math

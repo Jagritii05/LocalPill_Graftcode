@@ -1,4 +1,5 @@
 import { settingsStore } from '../settings-store.js';
+import { devanagariToRoman, hasIndicScript, applySentenceCasing } from '../../../services/text/index.js';
 
 const BASE_URL = 'https://generativelanguage.googleapis.com/v1beta';
 const EMBED_MODELS = ['gemini-embedding-001', 'gemini-embedding-2-preview'];
@@ -98,4 +99,67 @@ export async function embed(text) {
 
 export function hasApiKey() {
   return Boolean(settingsStore.get('geminiApiKey') || process.env.GEMINI_API_KEY);
+}
+
+const TRANSLITERATION_SYSTEM_PROMPT =
+  'You are a strict phonetic script transliterator. Convert Indic script text ' +
+  '(Devanagari, Tamil, Bengali, Telugu, Kannada, Marathi, Gujarati, etc.) into Romanized English/Latin letters ' +
+  '(Hinglish, Tanglish, Benglish) exactly as spoken.\n\n' +
+  'CRITICAL RULES:\n' +
+  '1. NEVER translate the meaning into English. Keep the exact same spoken words, only write them using English letters.\n' +
+  '   - "मेरा नाम जागृति है।" -> "Mera naam Jagriti hai." (NEVER "My name is Jagriti.")\n' +
+  '   - "कल सुबह १० बजे मीटिंग है।" -> "Kal subah 10 baje meeting hai." (NEVER "There is a meeting tomorrow at 10 am.")\n' +
+  '   - "आज मौसम बहुत अच्छा है" -> "Aaj mausam bahut accha hai"\n' +
+  '   - "நன்றி வணக்கம்" -> "Nandri vanakkam"\n' +
+  '2. Preserve punctuation, numbers, and natural capitalization (including proper names).\n' +
+  '3. Output ONLY the transliterated text. No quotes, no explanations.';
+
+// Phonetic transliteration from Indic Unicode scripts to Latin script without translating meaning
+export async function transliterateToRoman(rawText) {
+  if (!rawText || !hasIndicScript(rawText)) {
+    return rawText;
+  }
+
+  if (hasApiKey()) {
+    try {
+      const out = await generate(rawText, [], { system: TRANSLITERATION_SYSTEM_PROMPT });
+      if (out) {
+        return out.replace(/^["']|["']$/g, '').trim();
+      }
+    } catch (_) {}
+  }
+
+  const groqKey = settingsStore.get('groqApiKey') || process.env.GROQ_API_KEY || '';
+  if (groqKey) {
+    try {
+      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${groqKey}`,
+        },
+        body: JSON.stringify({
+          model: 'llama-3.3-70b-versatile',
+          messages: [
+            { role: 'system', content: TRANSLITERATION_SYSTEM_PROMPT },
+            { role: 'user', content: rawText },
+          ],
+          temperature: 0.1,
+          max_tokens: 300,
+        }),
+        signal: AbortSignal.timeout(10000),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const out = (data?.choices?.[0]?.message?.content || '').trim();
+        if (out) {
+          return out.replace(/^["']|["']$/g, '').trim();
+        }
+      }
+    } catch (_) {}
+  }
+
+  // Offline deterministic fallback for Devanagari text
+  const fallback = devanagariToRoman(rawText);
+  return fallback ? applySentenceCasing(fallback) : rawText;
 }

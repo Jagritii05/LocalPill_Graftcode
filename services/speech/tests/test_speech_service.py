@@ -18,6 +18,7 @@ from speech_service.audio_prep import validate_audio_file, convert_to_wav
 from speech_service.registry import registry
 from speech_service.engines.mlx_granite_engine import MlxGraniteEngine
 from speech_service.engines.groq_engine import GroqEngine
+from speech_service.engines.gnani_engine import GnaniEngine
 from speech_service.engines.faster_whisper_engine import FasterWhisperEngine
 
 def create_dummy_wav(path: str, duration_sec: float = 1.0, sample_rate: int = 16000):
@@ -64,6 +65,7 @@ def test_registry_engines():
     assert "whisper-base" in ids
     assert "whisper-small" in ids
     assert "groq-whisper" in ids
+    assert "gnani-prisma" in ids
     assert "mlx-granite" in ids
 
 def test_mlx_granite_unavailable_on_windows():
@@ -109,3 +111,47 @@ def test_speech_service_facade(tmp_path):
     outside_file = str(tmp_path / "secret.wav")
     with pytest.raises(PathNotAllowedException):
         SpeechService.TranscribeFileJson(outside_file)
+
+
+def test_gnani_engine_availability():
+    gnani = GnaniEngine(api_key="")
+    assert gnani.is_available() is False
+    gnani_with_key = GnaniEngine(api_key="gnani_test_key")
+    assert gnani_with_key.is_available() is True
+
+
+def test_gnani_engine_transcribe_mocked(tmp_path, monkeypatch):
+    import requests
+
+    wav_file = tmp_path / "sample.wav"
+    create_dummy_wav(str(wav_file), duration_sec=0.5, sample_rate=16000)
+
+    captured = {}
+
+    class MockResponse:
+        status_code = 200
+        text = "{}"
+
+        def json(self):
+            return {
+                "transcript": "Mera naam Rahul hai",
+                "detected_language_code": "hi-IN",
+                "duration": 0.5,
+            }
+
+    def fake_post(url, headers=None, files=None, data=None, timeout=None):
+        captured["url"] = url
+        captured["headers"] = headers
+        captured["data"] = data
+        return MockResponse()
+
+    monkeypatch.setattr(requests, "post", fake_post)
+
+    gnani = GnaniEngine(api_key="gnani_test_key")
+    res = gnani.transcribe(str(wav_file), language="hi-IN")
+    assert res["text"] == "Mera naam Rahul hai"
+    assert res["language"] == "hi-IN"
+    assert captured["url"] == "https://api.vachana.ai/stt/v3"
+    assert captured["headers"]["X-API-Key-ID"] == "gnani_test_key"
+    assert captured["data"]["language_code"] == "hi-IN"
+    assert captured["data"]["model"] == "prisma-v3.0"

@@ -3,12 +3,14 @@ try:
     from .engines.base import SpeechEngine
     from .engines.faster_whisper_engine import FasterWhisperEngine
     from .engines.groq_engine import GroqEngine
+    from .engines.gnani_engine import GnaniEngine
     from .engines.mlx_granite_engine import MlxGraniteEngine
     from .errors import EngineUnavailableException
 except ImportError:
     from speech_service.engines.base import SpeechEngine
     from speech_service.engines.faster_whisper_engine import FasterWhisperEngine
     from speech_service.engines.groq_engine import GroqEngine
+    from speech_service.engines.gnani_engine import GnaniEngine
     from speech_service.engines.mlx_granite_engine import MlxGraniteEngine
     from speech_service.errors import EngineUnavailableException
 
@@ -22,6 +24,7 @@ class EngineRegistry:
             "whisper-base": FasterWhisperEngine(model_size="base"),
             "whisper-small": FasterWhisperEngine(model_size="small"),
             "groq-whisper": GroqEngine(),
+            "gnani-prisma": GnaniEngine(),
             "mlx-granite": MlxGraniteEngine(),
         }
         self._active_id: str = "whisper-base"

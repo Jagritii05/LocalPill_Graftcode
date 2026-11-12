@@ -1,14 +1,14 @@
 import os
 import requests
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 try:
     from .base import SpeechEngine
     from ..errors import EngineUnavailableException, TranscriptionFailedException
-    from ..config import GROQ_API_KEY
+    from ..config import get_groq_api_key, get_speech_language
 except ImportError:
     from speech_service.engines.base import SpeechEngine
     from speech_service.errors import EngineUnavailableException, TranscriptionFailedException
-    from speech_service.config import GROQ_API_KEY
+    from speech_service.config import get_groq_api_key, get_speech_language
 
 class GroqEngine(SpeechEngine):
     """
@@ -18,14 +18,18 @@ class GroqEngine(SpeechEngine):
     label = "Groq Whisper (Cloud: whisper-large-v3-turbo)"
     is_local = False
 
-    def __init__(self, api_key: str = ""):
-        self.api_key = api_key or os.environ.get("GROQ_API_KEY", GROQ_API_KEY)
+    def __init__(self, api_key: Optional[str] = None):
+        self._explicit_key = api_key
         self.endpoint = "https://api.groq.com/openai/v1/audio/transcriptions"
         self.model_name = "whisper-large-v3-turbo"
 
+    def _resolve_key(self) -> str:
+        if self._explicit_key is not None:
+            return self._explicit_key.strip()
+        return get_groq_api_key()
+
     def is_available(self) -> bool:
-        key = self.api_key or os.environ.get("GROQ_API_KEY", "")
-        return bool(key and key.strip())
+        return bool(self._resolve_key())
 
     def load(self) -> None:
         if not self.is_available():
@@ -34,8 +38,10 @@ class GroqEngine(SpeechEngine):
     def unload(self) -> None:
         pass
 
-    def transcribe(self, wav_path: str, prompt: str = "") -> Dict[str, Any]:
-        key = self.api_key or os.environ.get("GROQ_API_KEY", "")
+    def transcribe(
+        self, wav_path: str, prompt: str = "", language: Optional[str] = None
+    ) -> Dict[str, Any]:
+        key = self._resolve_key()
         if not key:
             raise EngineUnavailableException("Groq API key not configured.")
 
@@ -52,6 +58,9 @@ class GroqEngine(SpeechEngine):
                     "model": self.model_name,
                     "response_format": "verbose_json"
                 }
+                raw_lang = (language or get_speech_language() or "").strip().lower()
+                if raw_lang and raw_lang != "auto":
+                    data["language"] = raw_lang.split("-")[0]
                 if prompt:
                     data["prompt"] = prompt
 
