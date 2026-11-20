@@ -11,6 +11,8 @@
 * **Node.js:** v18.0.0 or later (v20+ recommended)
 * **Python:** 3.10 to 3.13 (x64)
 * **Graftcode Gateway:** `gg.exe` version **v1.4.11** placed in the project root directory.
+  * **Download & Developer Account:** Register for a free account and download the `gg.exe` (v1.4.11) binary directly from [Graftcode](https://graftcode.com) / [Graftcode Developer Portal](https://grft.dev).
+  * Place the downloaded `gg.exe` binary in the project root directory alongside `package.json`.
 
 ### Setup & Launch
 From an elevated or standard PowerShell terminal in the project root:
@@ -39,14 +41,14 @@ LocalPill is designed with a strict architectural separation between local and c
 | **Model Context Protocol (MCP)** | Local Graftcode Gateway A (`:8085/mcp`) & Gateway B (`:8095/mcp`) | **100% Localhost** | Access limited strictly to `%USERPROFILE%\LocalPillRecordings`. No cloud telemetry. |
 | **Groq Whisper Fallback** | Optional Cloud Engine (`whisper-large-v3-turbo`) | Internet Connection | **Opt-in only:** Requires user-configured `GROQ_API_KEY`. Audio sent to Groq API only when explicitly selected in Settings. |
 | **Gnani Prisma Multilingual STT** | Optional Cloud Engine (`prisma-v3.0`, Indian languages) | Internet Connection | **Opt-in only:** Requires user-configured `GNANI_API_KEY`. Supports Hinglish, Hindi, Tamil, Bengali, Telugu, Kannada, Marathi, Gujarati. |
-| **Gemini Visual Memory & Screen Assistant** | Cloud Multimodal Reasoning (Google Gemini 3 Flash) | Internet Connection | **Opt-in only:** Requires user-configured `GEMINI_API_KEY`. Triggered strictly by intentional voice commands (*"remember this"*, *"ask what this error means"*). |
+| **Gemini Visual Memory & Screen Assistant** | Cloud Multimodal Reasoning (Google Gemini 3 Flash) | Internet Connection | **Opt-in only:** Requires user-configured `GEMINI_API_KEY`. In **Hybrid Mode**, newly saved screenshots in your Windows Screenshots folder are automatically sent to Gemini in the background to generate descriptions and vector embeddings; cloud processing is not limited to explicit voice commands. In **Intentional-Only Mode**, cloud processing is strictly limited to intentional voice commands (*"remember this"*, *"ask what this error means"*). |
 
 If `GEMINI_API_KEY`, `GROQ_API_KEY`, or `GNANI_API_KEY` are not provided in `.env`, all cloud capabilities remain inactive while 100% of local voice dictation, engine switching, and MCP tools function seamlessly offline.
 
 ### Selectable Visual Memory Modes
 Under **Settings > Assistant**, users can switch between two distinct memory architectures based on their privacy preferences:
-* **Hybrid Mode (Default):** Watches your local Windows Screenshots folder in the background (within a configurable lookback window up to 72 hours) and captures on-demand snapshots whenever you speak *"remember this"*.
-* **Intentional-Only Mode:** Strict privacy mode where the background folder watcher is completely idle. LocalPill never touches or scans your Screenshots folder; it captures and indexes an image only when you explicitly command *"remember this"* (or *"remember me"*).
+* **Hybrid Mode (Default):** Once `GEMINI_API_KEY` is configured, LocalPill actively monitors your local Windows Screenshots folder in the background. Newly created screenshots (and screenshots saved within a configurable lookback window up to 72 hours) are automatically uploaded to Google Gemini in the background to generate natural language descriptions and semantic embeddings, in addition to on-demand snapshots captured when speaking *"remember this"*. Note: Cloud processing in Hybrid Mode is automatic and continuous upon screenshot creation; it is not limited to explicit voice commands.
+* **Intentional-Only Mode:** Strict privacy mode where the background folder watcher is completely disabled. LocalPill never monitors, scans, or touches your Screenshots folder in the background. Cloud processing and Gemini transmission occur strictly when you explicitly speak an intentional voice command like *"remember this"* (or *"remember me"*), capturing only the active screen at that specific moment.
 
 ---
 
@@ -165,26 +167,34 @@ Measures operational ping and metadata queries without neural model inference:
 
 | Architecture | Min | Median (p50) | p95 | Average | Transport Characteristics |
 | :--- | :---: | :---: | :---: | :---: | :--- |
-| **Direct Graftcode WebSocket RPC** (`@graft/pypi-speech-gateway`) | 0.18 ms | **0.39 ms** | 1.21 ms | 0.51 ms | Persistent WebSocket frame; zero socket or process overhead |
-| **In-Process HTTP REST** (`GET /health`) | 0.54 ms | **0.74 ms** | 1.44 ms | 0.81 ms | HTTP socket handshake and header parsing |
-| **Subprocess `curl.exe` Bridge** (`execFile curl.exe`) | 13.07 ms | **13.80 ms** | 35.49 ms | 16.65 ms | Windows child-process creation penalty (+13 to 35 ms) |
+| **Direct Graftcode WebSocket RPC** (`@graft/pypi-speech-gateway`) | 0.22 ms | **0.46 ms** | 1.18 ms | 0.56 ms | Persistent WebSocket frame; zero connection or process overhead |
+| **In-Process HTTP REST** (`GET /health`) | 0.64 ms | **1.07 ms** | 1.33 ms | 1.05 ms | HTTP socket handshake and header parsing |
+| **Subprocess `curl.exe` Bridge** (`execFile curl.exe`) | 15.78 ms | **22.36 ms** | 47.51 ms | 26.42 ms | Windows child-process creation penalty (+15 to 48 ms) |
 
 ### 2. 1.0s Audio Clip End-to-End Transcription (N=5 calls, 2 warm-ups)
 Transcribing a 1.0-second 16 kHz mono audio sample on `whisper-base`:
 
 | Architecture | Min | Median (p50) | p95 | Average |
 | :--- | :---: | :---: | :---: | :---: |
-| **Direct Graftcode WebSocket RPC** (`SpeechService.transcribeBytesJson`) | 1179.49 ms | **1207.71 ms** | 1390.06 ms | **1246.97 ms** |
-| **In-Process HTTP REST** (`POST /transcribe`) | 1059.20 ms | **1072.29 ms** | 1134.04 ms | **1088.47 ms** |
-| **Subprocess `curl.exe` Bridge** (`curl.exe --data-binary`) | 1041.29 ms | **1054.05 ms** | 1083.56 ms | **1058.76 ms** |
+| **Direct Graftcode WebSocket RPC** (`SpeechService.transcribeBytesJson`) | 1331.22 ms | **4580.47 ms** | 4960.86 ms | **4018.42 ms** |
+| **In-Process HTTP REST** (`POST /transcribe`) | 1076.16 ms | **1086.45 ms** | 1099.86 ms | **1087.80 ms** |
+| **Subprocess `curl.exe` Bridge** (`curl.exe --data-binary`) | 1088.40 ms | **1191.96 ms** | 6257.31 ms | **2607.26 ms** |
 
-### Where Latency Lives:
-1. **Model Inference Dominates End-to-End Time:**
-   For a 1.0-second audio clip on CPU int8, neural inference requires **~1100–1200 ms**. Network transport accounts for less than 1.5% of total turnaround time.
-2. **Audio Payload Encoding:**
-   Completed recordings are base64-encoded by the Electron audio recorder and sent to `transcribeBytesJson`. Transmitting ~40 KB to 200 KB of base64 audio over localhost WebSocket takes under 1 ms.
-3. **The True Cost of Subprocess Bridges:**
-   Spawning external CLI tools (`curl.exe`) or creating ad-hoc processes introduces **13 ms to 50 ms** of Windows process-creation overhead and process management complexity. Graftcode completely eliminates child-process spawning by hosting Python in-process inside `gg.exe`.
+### Distinguishing Transport Speed vs. End-to-End Transcription
+
+The benchmark data highlights two distinct aspects of desktop architecture:
+
+1. **Protocol & RPC Transport Overhead (Health / Ping):**
+   * For lightweight operational RPC calls (readiness checks, engine state, metadata), Graftcode WebSocket RPC is **over 2.3x faster than in-process HTTP REST** (0.46 ms vs 1.07 ms p50) and **~48x faster than spawning a CLI subprocess** (22.36 ms).
+   * Spawning external CLI processes like `curl.exe` imposes an unavoidable 15 ms to 50 ms Windows process-creation penalty and socket teardown jitter.
+
+2. **End-to-End Audio Transcription:**
+   * In raw end-to-end transcription, model inference on CPU dominates turnaround time. In our recorded benchmark runs, the results favor standalone REST (~1086 ms p50) over Gateway A RPC (~4580 ms p50).
+   * **Why transcription currently favors standalone REST:**
+     * **Thread Scheduling & OpenMP in Embedded CPython:** The legacy REST server runs as a standalone Python process where CTranslate2 has unconstrained multi-threaded access across all CPU cores. When CPython is embedded directly inside `gg.exe` on Windows, thread pool allocation and GIL contention can constrain CTranslate2 CPU parallelism during heavy compute.
+     * **Payload Encoding & Tempfile Handling:** Audio is currently buffered in Electron as base64 and written to a temporary file in `transcribeBytesJson` before calling `convert_to_wav`, adding disk I/O overhead.
+   * **Where Graftcode Delivers Real Value:**
+     * Graftcode is not designed as a neural inference engine optimizer; rather, it replaces manual microservices with type-safe in-process RPC. It eliminates manual HTTP route handlers, body parsers, and connection management (>320 lines of boilerplate removed), avoids fragile child-process lifecycle tracking, and automatically exposes built-in Model Context Protocol (MCP) endpoints for external AI agents without writing custom SSE servers.
 
 ---
 
@@ -204,25 +214,42 @@ Hosting the Python speech service directly through Graftcode Gateway removes ext
 
 ## Graftcode Gateway & Package Management
 
-### Gateway Details
+### Gateway Details & Download
 * **Executable:** `gg.exe`
 * **Version:** `1.4.11`
-* **Hosted Runtimes:**
+* **Download & Developer Account:** Register for a free account and download `gg.exe` directly from [Graftcode](https://graftcode.com) or the [Graftcode Developer Portal](https://grft.dev).
+* **Hosted Runtimes in LocalPill:**
   * Gateway A: `python` (pointing to `services/speech`, WebSocket port 8085, HTTP/Vision port 8086)
   * Gateway B: `nodejs` (pointing to `services/text_gateway/index.js`, WebSocket port 8095, HTTP/Vision port 8096)
 
-### How Graft Packages Are Generated & Installed via Vision
-1. **Launch Gateway with Module:**
+### How Developers Obtain Their Own Generated Package and Registry URL
+
+When you host your own Python or Node.js modules through Graftcode Gateway, client packages are generated and published automatically:
+
+1. **Register & Download `gg.exe`:**
+   Sign up at [https://graftcode.com](https://graftcode.com) / [https://grft.dev](https://grft.dev) and place `gg.exe` (v1.4.11) in your project directory.
+2. **Launch Gateway on Your Module:**
+   Point `gg.exe` at the service module directory:
    ```powershell
    .\gg.exe --runtime python --modules services/speech --port 8085 --httpPort 8086
    ```
-2. **Graftcode Vision Dashboard:**
-   Open `http://localhost:8085` or `http://localhost:8086` in any browser to inspect the auto-discovered services (`SpeechService`), method signatures, and live test RPC calls.
-3. **Package Generation & Publication:**
-   Graftcode automatically extracts the module metadata, types, and method schemas into a Universal Graft Module (UGM) and publishes the client SDK to the private Graftcode registry:
-   * Package: `@graft/pypi-speech-gateway`
-   * Target Registry: `https://grft.dev/3e5baa8a-b08a-4d37-b4b6-d0de29c389bc__free`
-4. **Client Installation:**
+3. **Automated Analysis & UGM Publication:**
+   Graftcode's Module Analyzer (GMA) inspects the module classes (e.g. `SpeechService`), method signatures, and type annotations to construct a Universal Graft Model (UGM). This model is uploaded to the Graftcode Service Management Unit (GSMU at `https://grft.dev`), which assigns a unique session identifier GUID (e.g., `https://grft.dev/<unique-guid>__free`).
+4. **Obtaining Your Unique Registry URL & Package Name:**
+   Developers can retrieve their custom registry URL and generated package name in two ways:
+   * **Console Output:** During startup, `gg.exe` prints the exact installation command containing your unique registry URL in the terminal:
+     ```text
+     [Info] Model uploaded successfully.
+     [Info] To install the client SDK, run:
+     npm install @graft/pypi-speech-gateway --registry https://grft.dev/<your-session-guid>__free
+     ```
+   * **Graftcode Vision Dashboard:** Open `http://localhost:8086` (or `http://localhost:8085`) in any web browser. Under the SDK / Package view, you can inspect the auto-discovered methods, execute test RPC calls interactively, and copy the ready-to-use `npm install` command.
+   * **Headless Generation (`--graftOnly`):** To generate and publish the UGM and client SDK without keeping the persistent WebSocket and HTTP servers running, pass the `--graftOnly` flag:
+     ```powershell
+     .\gg.exe --runtime python --modules services/speech --graftOnly
+     ```
+5. **Install the Client Package:**
+   Run the generated npm command in your client project root (in this repository, the generated package registry is configured in `package.json`):
    ```powershell
    npm install @graft/pypi-speech-gateway --registry https://grft.dev/3e5baa8a-b08a-4d37-b4b6-d0de29c389bc__free
    ```
@@ -235,7 +262,7 @@ Hosting the Python speech service directly through Graftcode Gateway removes ext
 - **Log Privacy by Default:** Transcripts and audio are never written to disk logs (`LOG_TRANSCRIPTS=false`).
 - **Temporary File Sanitization:** Audio clips written to `%TEMP%\LocalPill\` are purged immediately upon transcription. The supervisor sweeps any orphaned audio files on launch and exit.
 - **MCP Security Boundary:** The MCP tool `TranscribeFileJson` only accesses files inside `%USERPROFILE%\LocalPillRecordings`. Directory traversal (`..\..\`), Windows NTFS Directory Junctions, and symlink escapes are resolved via `os.path.realpath` and strictly blocked with `PathNotAllowedException`. File extension whitelisting (`.wav`, `.mp3`, `.m4a`, `.webm`, `.ogg`, `.flac`) and empty-file rejection are enforced.
-- **Bounded Screenshot Retention:** Screenshot memory enforces a 25-entry FIFO cap and a 24-hour lookback filter. Historical image archives are never indexed or transmitted.
+- **Visual Memory Privacy & Modes:** In **Intentional-Only Mode**, cloud transmission occurs strictly on explicit voice command. In **Hybrid Mode**, newly created screenshots in the monitored Windows Screenshots folder are automatically transmitted to Google Gemini once `GEMINI_API_KEY` is configured; cloud processing is not limited to explicit voice commands. Both modes enforce a 25-entry FIFO memory store and a configurable lookback window (default 24h, up to 72h); historical image archives outside the lookback window are never indexed or transmitted.
 
 ---
 

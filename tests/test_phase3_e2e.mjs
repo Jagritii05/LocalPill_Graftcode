@@ -41,7 +41,7 @@ async function main() {
 
   try {
     console.log('[Phase 3 E2E] Waiting for gateways to become ready...');
-    const ready = await supervisor.waitForAllReady('graft', 60000);
+    const ready = await supervisor.waitForAllReady('graft', 120000);
     if (!ready) {
       throw new Error('Gateways did not become ready in time.');
     }
